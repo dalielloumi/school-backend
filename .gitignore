@@ -4,8 +4,6 @@ node_modules/
 # Environment variables — NEVER commit this
 .env
 
-# Firebase service account key — contains secrets
-serviceAccountKey.json
 
 # Logs
 logs/
