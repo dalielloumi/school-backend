@@ -2,6 +2,7 @@ const router = require('express').Router();
 const { body, validationResult } = require('express-validator');
 const { query, getClient } = require('../config/db');
 const { authenticate, authorize } = require('../middleware/auth');
+const { sendPush, getTokensForUsers } = require('../utils/fcm');
 
 const PAYMENT_SELECT = `
   SELECT p.*,
@@ -137,11 +138,19 @@ router.post(
       }
 
       const {
-        student_id, classe_id, parent_id, montant, frequence, mode_paiement,
+        student_id, classe_id, montant, frequence, mode_paiement,
         mois, trimestre, annee, statut, date_echeance, date_paiement,
         numero_cheque, note,
       } = req.body;
       const school_id = req.user.school_id;
+
+      // Always resolve parent_id from the student record
+      const studentRow = await query(
+        'SELECT nom, prenom, parent_id FROM students WHERE id = $1 AND school_id = $2',
+        [student_id, school_id]
+      );
+      const student = studentRow.rows[0];
+      const resolvedParentId = (req.body.parent_id) || (student ? student.parent_id : null);
 
       const result = await query(
         `INSERT INTO payments
@@ -150,14 +159,43 @@ router.post(
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
          RETURNING *`,
         [
-          school_id, student_id, classe_id, parent_id || null, montant,
+          school_id, student_id, classe_id, resolvedParentId, montant,
           frequence, mode_paiement || null, mois || null, trimestre || null, annee,
           statut || 'enAttente', date_echeance, date_paiement || null,
           numero_cheque || null, note || null,
         ]
       );
 
-      res.status(201).json({ success: true, data: result.rows[0] });
+      const payment = result.rows[0];
+
+      // Notify parent
+      if (resolvedParentId && student) {
+        const label = mois
+          ? `Mois ${mois}/${annee}`
+          : trimestre
+          ? `Trimestre ${trimestre} ${annee}`
+          : `Année ${annee}`;
+        await query(
+          `INSERT INTO notifications (user_id, title, message, type, data, school_id)
+           VALUES ($1, $2, $3, 'payment', $4, $5)`,
+          [
+            resolvedParentId,
+            'Nouveau paiement ajouté',
+            `Un paiement de ${montant} DT a été ajouté pour ${student.prenom} ${student.nom} (${label}).`,
+            JSON.stringify({ payment_id: payment.id, student_id: payment.student_id, montant: payment.montant }),
+            school_id,
+          ]
+        );
+        const tokens = await getTokensForUsers([resolvedParentId]);
+        if (tokens.length > 0) {
+          await sendPush(tokens, 'Nouveau paiement ajouté',
+            `Paiement de ${montant} DT pour ${student.prenom} ${student.nom} (${label})`,
+            { type: 'payment', payment_id: String(payment.id) }
+          );
+        }
+      }
+
+      res.status(201).json({ success: true, data: payment });
     } catch (err) {
       next(err);
     }
