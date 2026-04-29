@@ -62,6 +62,8 @@ router.put('/fcm-token', authenticate, async (req, res, next) => {
   try {
     const { token } = req.body;
     if (!token) return res.status(400).json({ success: false, message: 'Token required' });
+    // Clear this token from any other user first (one device = one active user)
+    await query('UPDATE users SET fcm_token = NULL WHERE fcm_token = $1 AND id != $2', [token, req.user.id]);
     await query('UPDATE users SET fcm_token = $1 WHERE id = $2', [token, req.user.id]);
     res.json({ success: true });
   } catch (err) { next(err); }

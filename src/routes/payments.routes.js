@@ -42,7 +42,8 @@ router.get('/', authenticate, async (req, res, next) => {
 
     if (req.user.role === 'parent') {
       params.push(req.user.id);
-      conditions.push(`p.parent_id = $${params.length}`);
+      // Match payments explicitly linked to this parent OR payments for students belonging to this parent
+      conditions.push(`(p.parent_id = $${params.length} OR p.student_id IN (SELECT id FROM students WHERE parent_id = $${params.length}))`);
     }
 
     if (student_id) { params.push(student_id); conditions.push(`p.student_id = $${params.length}`); }
