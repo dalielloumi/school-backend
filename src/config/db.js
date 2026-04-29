@@ -1,4 +1,7 @@
-const { Pool } = require('pg');
+const { Pool, types } = require('pg');
+
+// Return NUMERIC/DECIMAL as float instead of string
+types.setTypeParser(1700, parseFloat);
 
 const isProduction = process.env.NODE_ENV === 'production';
 
