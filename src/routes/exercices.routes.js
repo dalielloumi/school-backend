@@ -16,7 +16,7 @@ const EXERCICE_SELECT = `
   JOIN users u ON u.id = ex.teacher_id
 `;
 
-async function notifyParents(schoolId, classeId, title, message, data = null) {
+async function notifyParents(schoolId, classeId, title, message, type = 'exercice', data = null) {
   const parents = await query(
     `SELECT DISTINCT s.parent_id FROM students s
      JOIN users u ON u.id = s.parent_id
@@ -26,8 +26,8 @@ async function notifyParents(schoolId, classeId, title, message, data = null) {
   for (const row of parents.rows) {
     await query(
       `INSERT INTO notifications (user_id, school_id, title, message, type, data)
-       VALUES ($1,$2,$3,$4,'exam',$5)`,
-      [row.parent_id, schoolId, title, message, data ? JSON.stringify(data) : null]
+       VALUES ($1,$2,$3,$4,$5,$6)`,
+      [row.parent_id, schoolId, title, message, type, data ? JSON.stringify(data) : null]
     );
   }
 }
@@ -149,6 +149,7 @@ router.post('/',
         school_id, classe_id,
         `Nouveau devoir: ${titre}`,
         `Un nouveau devoir "${titre}" a été publié pour la classe ${classeNom}${date_limite ? '. À rendre avant le ' + new Date(date_limite).toLocaleDateString('fr-FR') : ''}.`,
+        'exercice',
         { exercice_id: result.rows[0].id }
       );
       const fcmTokens = await getParentTokensForClasse(school_id, classe_id);

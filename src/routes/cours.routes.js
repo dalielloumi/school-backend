@@ -146,7 +146,7 @@ router.post('/',
         school_id, classe_id,
         `Nouveau cours: ${titre}`,
         `Un nouveau cours "${titre}" a été publié pour la classe ${classeNom}.`,
-        'general',
+        'cours',
         { cours_id: result.rows[0].id }
       );
       const fcmTokens = await getParentTokensForClasse(school_id, classe_id);

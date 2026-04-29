@@ -20,7 +20,7 @@ EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 DO $$ BEGIN CREATE TYPE session_type AS ENUM ('matin', 'apres_midi');
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
-DO $$ BEGIN CREATE TYPE notification_type AS ENUM ('absence', 'grade', 'general', 'message', 'exam', 'payment');
+DO $$ BEGIN CREATE TYPE notification_type AS ENUM ('absence', 'grade', 'general', 'message', 'exam', 'payment', 'cours', 'exercice');
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 DO $$ BEGIN CREATE TYPE payment_frequence AS ENUM ('mensuelle', 'trimestrielle', 'annuelle');
