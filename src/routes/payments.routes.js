@@ -151,7 +151,17 @@ router.post(
         [student_id, school_id]
       );
       const student = studentRow.rows[0];
-      const resolvedParentId = (req.body.parent_id) || (student ? student.parent_id : null);
+      const rawParentId = (req.body.parent_id) || (student ? student.parent_id : null);
+
+      // Only use parent_id if the linked user actually has role='parent'
+      let resolvedParentId = null;
+      if (rawParentId) {
+        const parentCheck = await query(
+          "SELECT id FROM users WHERE id = $1 AND role = 'parent'",
+          [rawParentId]
+        );
+        if (parentCheck.rows.length > 0) resolvedParentId = rawParentId;
+      }
 
       const result = await query(
         `INSERT INTO payments
