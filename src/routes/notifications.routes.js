@@ -51,8 +51,8 @@ router.get('/:id', authenticate, async (req, res, next) => {
   }
 });
 
-// PATCH /api/notifications/mark-all-read  — mark all as read for current user
-router.patch('/mark-all-read', authenticate, async (req, res, next) => {
+// POST /api/notifications/mark-all-read  — mark all as read for current user
+router.post('/mark-all-read', authenticate, async (req, res, next) => {
   try {
     const result = await query(
       'UPDATE notifications SET is_read = TRUE WHERE user_id = $1 AND is_read = FALSE RETURNING id',
@@ -64,8 +64,8 @@ router.patch('/mark-all-read', authenticate, async (req, res, next) => {
   }
 });
 
-// PATCH /api/notifications/:id/read  — mark single notification as read
-router.patch('/:id/read', authenticate, async (req, res, next) => {
+// POST /api/notifications/:id/read  — mark single notification as read
+router.post('/:id/read', authenticate, async (req, res, next) => {
   try {
     const result = await query(
       'UPDATE notifications SET is_read = TRUE WHERE id = $1 AND user_id = $2 RETURNING *',
