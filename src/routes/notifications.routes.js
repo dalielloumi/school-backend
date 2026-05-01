@@ -51,6 +51,19 @@ router.get('/:id', authenticate, async (req, res, next) => {
   }
 });
 
+// PATCH /api/notifications/mark-all-read  — mark all as read for current user
+router.patch('/mark-all-read', authenticate, async (req, res, next) => {
+  try {
+    const result = await query(
+      'UPDATE notifications SET is_read = TRUE WHERE user_id = $1 AND is_read = FALSE RETURNING id',
+      [req.user.id]
+    );
+    res.json({ success: true, data: { updated: result.rowCount, message: 'All notifications marked as read' } });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // PATCH /api/notifications/:id/read  — mark single notification as read
 router.patch('/:id/read', authenticate, async (req, res, next) => {
   try {
@@ -62,19 +75,6 @@ router.patch('/:id/read', authenticate, async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Notification not found' });
     }
     res.json({ success: true, data: result.rows[0] });
-  } catch (err) {
-    next(err);
-  }
-});
-
-// PATCH /api/notifications/mark-all-read  — mark all as read for current user
-router.patch('/mark-all-read', authenticate, async (req, res, next) => {
-  try {
-    const result = await query(
-      'UPDATE notifications SET is_read = TRUE WHERE user_id = $1 AND is_read = FALSE RETURNING id',
-      [req.user.id]
-    );
-    res.json({ success: true, data: { updated: result.rowCount, message: 'All notifications marked as read' } });
   } catch (err) {
     next(err);
   }
