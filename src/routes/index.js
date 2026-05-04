@@ -13,6 +13,7 @@ const notificationsRoutes = require('./notifications.routes');
 const paymentsRoutes      = require('./payments.routes');
 const coursRoutes         = require('./cours.routes');
 const exercicesRoutes     = require('./exercices.routes');
+const comportementsRoutes = require('./comportements.routes');
 const examensRoutes       = require('./examens.routes');
 const dashboardRoutes     = require('./dashboard.routes');
 const accountsRoutes      = require('./accounts.routes');
@@ -35,6 +36,7 @@ router.use('/appel',         appelRoutes);
 router.use('/schedules',     scheduleRoutes);
 router.use('/cours',         coursRoutes);
 router.use('/exercices',     exercicesRoutes);
+router.use('/comportements', comportementsRoutes);
 router.use('/examens',       examensRoutes);
 
 // Admin / Finance

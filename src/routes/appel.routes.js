@@ -4,6 +4,43 @@ const { authenticate, authorize } = require('../middleware/auth');
 const { sendPush, getTokensForUsers } = require('../utils/fcm');
 
 // ─────────────────────────────────────────────────────────────
+// GET /api/appel/parent-records — parent sees child's absent/exclu records
+// ─────────────────────────────────────────────────────────────
+router.get('/parent-records', authenticate, async (req, res, next) => {
+  try {
+    let studentIds;
+    if (req.user.role === 'parent') {
+      const childResult = await query(
+        'SELECT id FROM students WHERE parent_id = $1',
+        [req.user.id]
+      );
+      studentIds = childResult.rows.map(r => r.id);
+      if (studentIds.length === 0) return res.json({ success: true, data: [] });
+    } else if (req.query.student_id) {
+      studentIds = [parseInt(req.query.student_id)];
+    } else {
+      return res.status(400).json({ success: false, message: 'student_id required' });
+    }
+
+    const result = await query(
+      `SELECT a.student_id, a.date, a.session, a.status,
+              TO_CHAR(a.updated_at, 'HH24:MI') AS time_str,
+              cl.nom AS classe_nom
+       FROM appel a
+       JOIN classes cl ON cl.id = a.classe_id
+       WHERE a.student_id = ANY($1)
+         AND a.status IN ('absent', 'exclu')
+       ORDER BY a.date DESC, a.updated_at DESC`,
+      [studentIds]
+    );
+
+    res.json({ success: true, data: result.rows });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─────────────────────────────────────────────────────────────
 // GET /api/appel?classe_id=&date=&session=
 // Returns existing records for this session.
 // For students with no record yet, pre-fills from their LAST session:
