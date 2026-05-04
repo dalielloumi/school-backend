@@ -123,6 +123,72 @@ router.get('/:id', authenticate, async (req, res, next) => {
   }
 });
 
+// POST /api/grades/bulk  — insert grades for a whole class at once
+router.post('/bulk', authenticate, authorize('teacher', 'admin', 'superAdmin'), async (req, res, next) => {
+  const client = await getClient();
+  try {
+    const { classe_id, subject_id, trimestre, type, date, records } = req.body;
+    const validTypes = ['devoir', 'examen', 'tp'];
+
+    if (!classe_id || !subject_id || !trimestre || !validTypes.includes(type) || !Array.isArray(records) || records.length === 0) {
+      return res.status(400).json({ success: false, message: 'Missing or invalid fields' });
+    }
+
+    const school_id  = req.user.school_id;
+    const teacher_id = req.user.role === 'teacher' ? req.user.id : (req.body.teacher_id || req.user.id);
+    const gradeDate  = date || new Date();
+
+    await client.query('BEGIN');
+
+    const inserted = [];
+    for (const record of records) {
+      const { student_id, valeur, comment } = record;
+      if (!student_id || valeur === undefined || valeur === null || valeur === '') continue;
+      const val = parseFloat(valeur);
+      if (isNaN(val) || val < 0 || val > 20) continue;
+
+      const result = await client.query(
+        `INSERT INTO grades (school_id, student_id, subject_id, classe_id, teacher_id, valeur, type, date, comment, trimestre)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
+        [school_id, student_id, subject_id, classe_id, teacher_id, val, type, gradeDate, comment || null, trimestre]
+      );
+      if (result.rows.length > 0) inserted.push({ ...result.rows[0], student_id });
+    }
+
+    await client.query('COMMIT');
+
+    // Notify parents (best-effort, after commit)
+    for (const row of inserted) {
+      try {
+        const studentRes = await query(
+          'SELECT s.nom, s.prenom, s.parent_id, sub.nom AS subject_nom FROM students s JOIN subjects sub ON sub.id = $2 WHERE s.id = $1',
+          [row.student_id, subject_id]
+        );
+        if (studentRes.rows.length > 0) {
+          const { nom, prenom, parent_id, subject_nom } = studentRes.rows[0];
+          if (parent_id) {
+            await query(
+              `INSERT INTO notifications (user_id, school_id, title, message, type, data) VALUES ($1,$2,$3,$4,'grade',$5)`,
+              [parent_id, school_id, 'Nouvelle note',
+               `${prenom} ${nom} a obtenu ${row.valeur}/20 en ${subject_nom} (${type})`,
+               JSON.stringify({ student_id: row.student_id, subject_id, valeur: row.valeur, type, trimestre })]
+            );
+            const tokens = await getTokensForUsers([parent_id]);
+            if (tokens.length) await sendPush(tokens, '⭐ Nouvelle note', `${prenom} ${nom} a obtenu ${row.valeur}/20 en ${subject_nom}`, { type: 'grade' });
+          }
+        }
+      } catch (_) {}
+    }
+
+    res.status(201).json({ success: true, count: inserted.length, data: inserted });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    next(err);
+  } finally {
+    client.release();
+  }
+});
+
 // POST /api/grades  — teacher, admin+
 router.post(
   '/',
