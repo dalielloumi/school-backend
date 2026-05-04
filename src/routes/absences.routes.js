@@ -26,24 +26,26 @@ router.get('/', authenticate, async (req, res, next) => {
     const params = [];
     const conditions = [];
 
-    // Scope by school_id (superAdmin exempt)
-    if (req.user.role !== 'superAdmin') {
-      params.push(req.user.school_id);
-      conditions.push(`a.school_id = $${params.length}`);
-    }
-
-    if (req.user.role === 'teacher') {
-      params.push(req.user.id);
-      conditions.push(`a.teacher_id = $${params.length}`);
-    } else if (req.user.role === 'parent') {
+    if (req.user.role === 'parent') {
+      // Scope by child student IDs — no school_id dependency needed
       const childResult = await query(
-        'SELECT id FROM students WHERE parent_id = $1 AND school_id = $2',
-        [req.user.id, req.user.school_id]
+        'SELECT id FROM students WHERE parent_id = $1',
+        [req.user.id]
       );
       const childIds = childResult.rows.map((r) => r.id);
       if (childIds.length === 0) return res.json({ success: true, data: [] });
       params.push(childIds);
       conditions.push(`a.student_id = ANY($${params.length})`);
+    } else {
+      // Scope by school_id (superAdmin exempt)
+      if (req.user.role !== 'superAdmin') {
+        params.push(req.user.school_id);
+        conditions.push(`a.school_id = $${params.length}`);
+      }
+      if (req.user.role === 'teacher') {
+        params.push(req.user.id);
+        conditions.push(`a.teacher_id = $${params.length}`);
+      }
     }
 
     if (student_id) { params.push(student_id); conditions.push(`a.student_id = $${params.length}`); }
