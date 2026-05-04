@@ -33,6 +33,7 @@ router.get('/', authenticate, async (req, res, next) => {
         [req.user.id]
       );
       const childIds = childResult.rows.map((r) => r.id);
+      console.log(`[absences] parent=${req.user.id} childIds=${JSON.stringify(childIds)}`);
       if (childIds.length === 0) return res.json({ success: true, data: [] });
       params.push(childIds);
       conditions.push(`a.student_id = ANY($${params.length})`);
@@ -61,6 +62,7 @@ router.get('/', authenticate, async (req, res, next) => {
     sql += ' ORDER BY a.date DESC, a.created_at DESC';
 
     const result = await query(sql, params);
+    console.log(`[absences] returned ${result.rowCount} rows`);
     res.json({ success: true, data: result.rows });
   } catch (err) {
     next(err);
