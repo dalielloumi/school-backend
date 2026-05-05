@@ -109,10 +109,11 @@ router.post(
         const { nom, prenom, parent_id } = student;
         if (parent_id) {
           await client.query(
-            `INSERT INTO notifications (user_id, title, message, type, data)
-             VALUES ($1, $2, $3, 'comportement', $4)`,
+            `INSERT INTO notifications (user_id, school_id, title, message, type, data)
+             VALUES ($1, $2, $3, $4, 'general', $5)`,
             [
               parent_id,
+              school_id,
               'ملاحظة سلوك',
               `Votre enfant ${prenom} ${nom} : ${titre}`,
               JSON.stringify({ comportement_id: comp.id, student_id, date }),
