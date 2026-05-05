@@ -96,7 +96,7 @@ router.post('/schools', requireSuperAdmin,
 // PUT /api/accounts/schools/:id — update a school
 router.put('/schools/:id', requireSuperAdmin, async (req, res, next) => {
   try {
-    const { nom, adresse, ville, phone, email, is_active, school_types } = req.body;
+    const { nom, adresse, ville, phone, email, is_active, school_types, has_cantine } = req.body;
 
     const validTypes = ['primaire', 'college', 'secondaire'];
     const types = Array.isArray(school_types)
@@ -111,9 +111,11 @@ router.put('/schools/:id', requireSuperAdmin, async (req, res, next) => {
          phone        = COALESCE($4, phone),
          email        = COALESCE($5, email),
          is_active    = COALESCE($6, is_active),
-         school_types = COALESCE($7::text[], school_types)
-       WHERE id = $8 RETURNING *`,
-      [nom, adresse, ville, phone, email, is_active, types, req.params.id]
+         school_types = COALESCE($7::text[], school_types),
+         has_cantine  = COALESCE($8, has_cantine)
+       WHERE id = $9 RETURNING *`,
+      [nom, adresse, ville, phone, email, is_active, types,
+       has_cantine !== undefined ? has_cantine : null, req.params.id]
     );
     if (result.rows.length === 0) {
       return res.status(404).json({ success: false, message: 'School not found' });
@@ -143,7 +145,7 @@ router.get('/', requireSuperAdmin, async (req, res, next) => {
     let sql = `
       SELECT u.id, u.school_id, u.nom, u.prenom, u.email, u.role,
              u.phone, u.avatar_url, u.is_active, u.created_at,
-             s.nom AS school_nom
+             s.nom AS school_nom, s.has_cantine
       FROM users u
       LEFT JOIN schools s ON u.school_id = s.id
       WHERE u.role = 'admin'

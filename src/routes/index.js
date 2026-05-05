@@ -19,6 +19,7 @@ const dashboardRoutes     = require('./dashboard.routes');
 const accountsRoutes      = require('./accounts.routes');
 const profileRoutes       = require('./profile.routes');
 const uploadRoutes        = require('./upload.routes');
+const cantineRoutes       = require('./cantine.routes');
 
 // Auth
 router.use('/auth', authRoutes);
@@ -53,5 +54,8 @@ router.use('/profile',       profileRoutes);
 
 // File upload
 router.use('/upload',        uploadRoutes);
+
+// Cantine (optional school feature)
+router.use('/cantine',       cantineRoutes);
 
 module.exports = router;
