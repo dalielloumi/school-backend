@@ -21,6 +21,7 @@ const profileRoutes       = require('./profile.routes');
 const uploadRoutes        = require('./upload.routes');
 const cantineRoutes       = require('./cantine.routes');
 const eventsRoutes        = require('./events.routes');
+const clubsRoutes         = require('./clubs.routes');
 
 // Auth
 router.use('/auth', authRoutes);
@@ -61,5 +62,8 @@ router.use('/cantine',       cantineRoutes);
 
 // School events
 router.use('/events',        eventsRoutes);
+
+// Clubs
+router.use('/clubs',         clubsRoutes);
 
 module.exports = router;
