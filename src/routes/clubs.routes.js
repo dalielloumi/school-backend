@@ -125,7 +125,7 @@ router.delete('/:id', requireAdmin, async (req, res, next) => {
 router.get('/:id/membres', requireAdmin, async (req, res, next) => {
   try {
     const result = await query(
-      `SELECT s.id, s.nom, s.prenom, s.matricule, cl.nom AS classe_nom
+      `SELECT s.id, s.nom, s.prenom, cl.nom AS classe_nom
        FROM club_membres cm
        JOIN students s ON s.id = cm.eleve_id
        LEFT JOIN classes cl ON cl.id = s.classe_id
