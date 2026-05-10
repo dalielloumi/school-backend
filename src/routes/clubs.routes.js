@@ -178,4 +178,58 @@ router.delete('/:id/membres/:eleveId', requireAdmin, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// GET /api/clubs/:id/activites — list activities of a club
+router.get('/:id/activites', authenticate, async (req, res, next) => {
+  try {
+    const result = await query(
+      `SELECT * FROM club_activites
+       WHERE club_id = $1
+       ORDER BY date_activite ASC, created_at DESC`,
+      [req.params.id]
+    );
+    res.json({ success: true, data: result.rows });
+  } catch (err) { next(err); }
+});
+
+// POST /api/clubs/:id/activites — create activity (admin only)
+router.post('/:id/activites', requireAdmin, [
+  body('titre').notEmpty().withMessage('titre required'),
+  body('date_activite').isDate().withMessage('Valid date required'),
+], async (req, res, next) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ success: false, message: errors.array()[0].msg });
+    }
+
+    const { titre, description, date_activite, heure } = req.body;
+
+    const club = await query(
+      'SELECT id FROM clubs WHERE id = $1 AND school_id = $2',
+      [req.params.id, req.user.school_id]
+    );
+    if (club.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Club not found' });
+    }
+
+    const result = await query(
+      `INSERT INTO club_activites (club_id, titre, description, date_activite, heure)
+       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+      [req.params.id, titre, description || null, date_activite, heure || null]
+    );
+    res.status(201).json({ success: true, data: result.rows[0] });
+  } catch (err) { next(err); }
+});
+
+// DELETE /api/clubs/:id/activites/:activiteId — delete activity (admin only)
+router.delete('/:id/activites/:activiteId', requireAdmin, async (req, res, next) => {
+  try {
+    await query(
+      'DELETE FROM club_activites WHERE id = $1 AND club_id = $2',
+      [req.params.activiteId, req.params.id]
+    );
+    res.json({ success: true });
+  } catch (err) { next(err); }
+});
+
 module.exports = router;
