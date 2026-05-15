@@ -32,7 +32,14 @@ router.get('/', authenticate, async (req, res, next) => {
     const result = await query(sql, params);
     const unreadCount = (await query('SELECT COUNT(*) FROM notifications WHERE user_id = $1 AND is_read = FALSE', [req.user.id])).rows[0].count;
 
-    res.json({ success: true, data: result.rows, unread_count: parseInt(unreadCount) });
+    const rows = result.rows.map(row => ({
+      ...row,
+      data: typeof row.data === 'string'
+        ? (() => { try { return JSON.parse(row.data); } catch { return row.data; } })()
+        : row.data,
+    }));
+
+    res.json({ success: true, data: rows, unread_count: parseInt(unreadCount) });
   } catch (err) {
     next(err);
   }
