@@ -22,6 +22,7 @@ const uploadRoutes        = require('./upload.routes');
 const cantineRoutes       = require('./cantine.routes');
 const eventsRoutes        = require('./events.routes');
 const clubsRoutes         = require('./clubs.routes');
+const aiRoutes            = require('./ai.routes');
 
 // Auth
 router.use('/auth', authRoutes);
@@ -65,5 +66,8 @@ router.use('/events',        eventsRoutes);
 
 // Clubs
 router.use('/clubs',         clubsRoutes);
+
+// AI Assistant
+router.use('/ai',            aiRoutes);
 
 module.exports = router;
