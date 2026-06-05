@@ -159,16 +159,21 @@ router.post('/chat', authenticate, authorize('parent'), async (req, res, next) =
       return res.status(403).json({ success: false, message: 'Élève introuvable ou accès refusé' });
     }
 
-    // Build conversation history for Gemini
-    const geminiHistory = history.map(h => ({
-      role: h.role === 'assistant' ? 'model' : 'user',
-      parts: [{ text: h.content }],
-    }));
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-1.5-flash',
-      systemInstruction: buildSystemPrompt(ctx),
-    });
+    // Inject system prompt as first turn of history
+    const systemTurn = [
+      { role: 'user',  parts: [{ text: buildSystemPrompt(ctx) }] },
+      { role: 'model', parts: [{ text: 'Compris ! Je suis prêt à vous aider.' }] },
+    ];
+
+    const geminiHistory = [
+      ...systemTurn,
+      ...history.map(h => ({
+        role: h.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: h.content }],
+      })),
+    ];
 
     const chat = model.startChat({
       history: geminiHistory,
