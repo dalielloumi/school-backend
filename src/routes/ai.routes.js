@@ -1,9 +1,9 @@
 const router  = require('express').Router();
-const Anthropic = require('@anthropic-ai/sdk');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { query } = require('../config/db');
 const { authenticate, authorize } = require('../middleware/auth');
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 // ── Fetch all child data for AI context ─────────────────
 async function fetchChildContext(parentId, studentId, schoolId) {
@@ -159,20 +159,24 @@ router.post('/chat', authenticate, authorize('parent'), async (req, res, next) =
       return res.status(403).json({ success: false, message: 'Élève introuvable ou accès refusé' });
     }
 
-    // Build conversation history for Claude
-    const messages = [
-      ...history.map(h => ({ role: h.role, content: h.content })),
-      { role: 'user', content: message },
-    ];
+    // Build conversation history for Gemini
+    const geminiHistory = history.map(h => ({
+      role: h.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: h.content }],
+    }));
 
-    const response = await client.messages.create({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 1024,
-      system: buildSystemPrompt(ctx),
-      messages,
+    const model = genAI.getGenerativeModel({
+      model: 'gemini-1.5-flash',
+      systemInstruction: buildSystemPrompt(ctx),
     });
 
-    const reply = response.content[0].text;
+    const chat = model.startChat({
+      history: geminiHistory,
+      generationConfig: { maxOutputTokens: 1024 },
+    });
+
+    const result = await chat.sendMessage(message);
+    const reply  = result.response.text();
 
     res.json({ success: true, data: { reply, student: ctx.student } });
   } catch (err) {
