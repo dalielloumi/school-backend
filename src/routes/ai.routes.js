@@ -164,7 +164,7 @@ router.post('/chat', authenticate, authorize('parent'), async (req, res, next) =
       return res.status(403).json({ success: false, message: 'Élève introuvable ou accès refusé' });
     }
 
-    const model = getGenAI().getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const model = getGenAI().getGenerativeModel({ model: 'gemini-2.0-flash-lite' });
 
     // Inject system prompt as first turn of history
     const systemTurn = [
