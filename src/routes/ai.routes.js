@@ -1,13 +1,12 @@
 const router  = require('express').Router();
-const { GoogleGenerativeAI } = require('@google/generative-ai');
+const Groq = require('groq-sdk');
 const { query } = require('../config/db');
 const { authenticate, authorize } = require('../middleware/auth');
 
-// genAI is created per-request so it always picks up the env var
-function getGenAI() {
-  const key = process.env.GEMINI_API_KEY;
-  if (!key) throw new Error('GEMINI_API_KEY is not set on the server');
-  return new GoogleGenerativeAI(key);
+function getGroq() {
+  const key = process.env.GROQ_API_KEY;
+  if (!key) throw new Error('GROQ_API_KEY is not set on the server');
+  return new Groq({ apiKey: key });
 }
 
 // ── Fetch all child data for AI context ─────────────────
@@ -164,29 +163,20 @@ router.post('/chat', authenticate, authorize('parent'), async (req, res, next) =
       return res.status(403).json({ success: false, message: 'Élève introuvable ou accès refusé' });
     }
 
-    const model = getGenAI().getGenerativeModel({ model: 'gemini-2.0-flash-lite' });
-
-    // Inject system prompt as first turn of history
-    const systemTurn = [
-      { role: 'user',  parts: [{ text: buildSystemPrompt(ctx) }] },
-      { role: 'model', parts: [{ text: 'Compris ! Je suis prêt à vous aider.' }] },
+    const groqMessages = [
+      { role: 'system', content: buildSystemPrompt(ctx) },
+      ...history.map(h => ({ role: h.role === 'assistant' ? 'assistant' : 'user', content: h.content })),
+      { role: 'user', content: message },
     ];
 
-    const geminiHistory = [
-      ...systemTurn,
-      ...history.map(h => ({
-        role: h.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text: h.content }],
-      })),
-    ];
-
-    const chat = model.startChat({
-      history: geminiHistory,
-      generationConfig: { maxOutputTokens: 1024 },
+    const completion = await getGroq().chat.completions.create({
+      model: 'llama-3.1-8b-instant',
+      messages: groqMessages,
+      max_tokens: 1024,
+      temperature: 0.7,
     });
 
-    const result = await chat.sendMessage(message);
-    const reply  = result.response.text();
+    const reply = completion.choices[0].message.content;
 
     res.json({ success: true, data: { reply, student: ctx.student } });
   } catch (err) {
