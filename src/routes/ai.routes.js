@@ -180,7 +180,8 @@ router.post('/chat', authenticate, authorize('parent'), async (req, res, next) =
 
     res.json({ success: true, data: { reply, student: ctx.student } });
   } catch (err) {
-    next(err);
+    console.error('[AI] Error:', err?.message || err);
+    res.status(500).json({ success: false, message: err?.message || 'AI error', detail: err?.toString() });
   }
 });
 
