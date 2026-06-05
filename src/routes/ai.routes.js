@@ -3,7 +3,12 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { query } = require('../config/db');
 const { authenticate, authorize } = require('../middleware/auth');
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+// genAI is created per-request so it always picks up the env var
+function getGenAI() {
+  const key = process.env.GEMINI_API_KEY;
+  if (!key) throw new Error('GEMINI_API_KEY is not set on the server');
+  return new GoogleGenerativeAI(key);
+}
 
 // ── Fetch all child data for AI context ─────────────────
 async function fetchChildContext(parentId, studentId, schoolId) {
@@ -159,7 +164,7 @@ router.post('/chat', authenticate, authorize('parent'), async (req, res, next) =
       return res.status(403).json({ success: false, message: 'Élève introuvable ou accès refusé' });
     }
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const model = getGenAI().getGenerativeModel({ model: 'gemini-1.5-flash' });
 
     // Inject system prompt as first turn of history
     const systemTurn = [
