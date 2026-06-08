@@ -13,7 +13,7 @@ function buildFilters(schoolId, classeId, frequence, year) {
   }
   if (frequence) {
     params.push(frequence);
-    clauses.push(`p.frequence = $${params.length}`);
+    clauses.push(`p.frequence::text = $${params.length}`);
   }
   if (year) {
     params.push(year);
@@ -41,21 +41,21 @@ router.get('/stats', authenticate, async (req, res, next) => {
     // ── 1. Global KPIs + month-over-month growth ─────────────
     const kpiSql = `
       SELECT
-        COALESCE(SUM(p.montant) FILTER (WHERE p.statut = 'paye'), 0)                                    AS total_percu,
-        COALESCE(SUM(p.montant) FILTER (WHERE p.statut <> 'paye'), 0)                                   AS total_en_attente,
-        COUNT(*)  FILTER (WHERE p.statut <> 'paye' AND p.date_echeance < NOW())                         AS nb_en_retard,
-        COALESCE(SUM(p.montant) FILTER (WHERE p.statut <> 'paye' AND p.date_echeance < NOW()), 0)       AS montant_en_retard,
+        COALESCE(SUM(p.montant) FILTER (WHERE p.statut::text = 'paye'), 0)                                    AS total_percu,
+        COALESCE(SUM(p.montant) FILTER (WHERE p.statut::text <> 'paye'), 0)                                   AS total_en_attente,
+        COUNT(*)  FILTER (WHERE p.statut::text <> 'paye' AND p.date_echeance < NOW())                         AS nb_en_retard,
+        COALESCE(SUM(p.montant) FILTER (WHERE p.statut::text <> 'paye' AND p.date_echeance < NOW()), 0)       AS montant_en_retard,
         COALESCE(SUM(p.montant) FILTER (
-          WHERE p.statut = 'paye'
+          WHERE p.statut::text = 'paye'
             AND p.date_paiement >= DATE_TRUNC('month', NOW())
         ), 0)                                                                                            AS percu_ce_mois,
         COALESCE(SUM(p.montant) FILTER (
-          WHERE p.statut = 'paye'
+          WHERE p.statut::text = 'paye'
             AND p.date_paiement >= DATE_TRUNC('month', NOW()) - INTERVAL '1 month'
             AND p.date_paiement <  DATE_TRUNC('month', NOW())
         ), 0)                                                                                            AS percu_mois_prec,
         ROUND(
-          COUNT(*) FILTER (WHERE p.statut = 'paye')::numeric / NULLIF(COUNT(*), 0) * 100, 1
+          COUNT(*) FILTER (WHERE p.statut::text = 'paye')::numeric / NULLIF(COUNT(*), 0) * 100, 1
         )                                                                                                AS taux_global
       FROM payments p
       WHERE ${where}
@@ -66,10 +66,10 @@ router.get('/stats', authenticate, async (req, res, next) => {
       SELECT
         TO_CHAR(DATE_TRUNC('month', p.date_echeance), 'YYYY-MM')             AS mois,
         COALESCE(SUM(p.montant), 0)                                           AS total,
-        COALESCE(SUM(p.montant) FILTER (WHERE p.statut = 'paye'), 0)         AS percu,
-        COALESCE(SUM(p.montant) FILTER (WHERE p.statut <> 'paye'), 0)        AS en_attente,
+        COALESCE(SUM(p.montant) FILTER (WHERE p.statut::text = 'paye'), 0)         AS percu,
+        COALESCE(SUM(p.montant) FILTER (WHERE p.statut::text <> 'paye'), 0)        AS en_attente,
         COUNT(*)                                                              AS nb_total,
-        COUNT(*) FILTER (WHERE p.statut = 'paye')                            AS nb_payes
+        COUNT(*) FILTER (WHERE p.statut::text = 'paye')                            AS nb_payes
       FROM payments p
       WHERE ${where}
         AND p.date_echeance >= NOW() - INTERVAL '12 months'
@@ -81,12 +81,12 @@ router.get('/stats', authenticate, async (req, res, next) => {
     const byClassSql = `
       SELECT
         c.nom                                                                 AS classe_nom,
-        COALESCE(SUM(p.montant) FILTER (WHERE p.statut = 'paye'), 0)         AS percu,
+        COALESCE(SUM(p.montant) FILTER (WHERE p.statut::text = 'paye'), 0)         AS percu,
         COALESCE(SUM(p.montant), 0)                                           AS total,
-        COUNT(*) FILTER (WHERE p.statut = 'paye')                            AS nb_payes,
+        COUNT(*) FILTER (WHERE p.statut::text = 'paye')                            AS nb_payes,
         COUNT(*)                                                              AS nb_total,
         ROUND(
-          COUNT(*) FILTER (WHERE p.statut = 'paye')::numeric / NULLIF(COUNT(*), 0) * 100, 1
+          COUNT(*) FILTER (WHERE p.statut::text = 'paye')::numeric / NULLIF(COUNT(*), 0) * 100, 1
         )                                                                     AS taux
       FROM payments p
       JOIN classes c ON c.id = p.classe_id
@@ -99,12 +99,12 @@ router.get('/stats', authenticate, async (req, res, next) => {
     // ── 4. Payment mode breakdown (paid only) ─────────────────
     const byModeSql = `
       SELECT
-        COALESCE(p.mode_paiement, 'non_renseigne')  AS mode,
+        COALESCE(p.mode_paiement::text, 'non_renseigne')  AS mode,
         COUNT(*)                                     AS count,
         COALESCE(SUM(p.montant), 0)                 AS total
       FROM payments p
       WHERE ${where}
-        AND p.statut = 'paye'
+        AND p.statut::text = 'paye'
       GROUP BY 1
       ORDER BY total DESC
     `;
@@ -122,7 +122,7 @@ router.get('/stats', authenticate, async (req, res, next) => {
         COALESCE(SUM(p.montant), 0)     AS montant
       FROM payments p
       WHERE ${where}
-        AND p.statut <> 'paye'
+        AND p.statut::text <> 'paye'
         AND p.date_echeance < NOW()
       GROUP BY 1
       ORDER BY MIN(p.date_echeance)
