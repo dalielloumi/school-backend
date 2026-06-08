@@ -23,6 +23,7 @@ const cantineRoutes       = require('./cantine.routes');
 const eventsRoutes        = require('./events.routes');
 const clubsRoutes         = require('./clubs.routes');
 const aiRoutes            = require('./ai.routes');
+const financeRoutes       = require('./finance.routes');
 
 // Auth
 router.use('/auth', authRoutes);
@@ -69,5 +70,8 @@ router.use('/clubs',         clubsRoutes);
 
 // AI Assistant
 router.use('/ai',            aiRoutes);
+
+// Finance analytics
+router.use('/finance',       financeRoutes);
 
 module.exports = router;
